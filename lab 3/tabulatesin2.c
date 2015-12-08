@@ -9,11 +9,12 @@
 
 int main(void){
 	int i;
-	float x, y;
+	float x, y, z;
 	for (i=0; i<N; i=i+1){
 		x = XMIN + (XMAX - XMIN)/(N-1)*((float)i);
 		y = sin(x);
-		printf("%f %f\n", x, y);
+		z = cos(x);
+		printf("%f %f %f\n", x, y, z);
 	}
 	return 0;
 }
