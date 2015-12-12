@@ -1,8 +1,11 @@
 #include <stdio.h>
 
 int main(void){
-	char **answer;
-	scanf(" %c", *answer);
-	printf("Entered %c.\n", *answer);
+	int n = 0;
+int m = n;
+n = m + 2;
+for (m = 0; m < 3; m++)
+  { n = n + 1; }
+  printf("%d", n);
 	return 0;
 }

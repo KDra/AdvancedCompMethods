@@ -20,19 +20,16 @@ void rstrip(char s[]) {
 		l++;
 	}
 	int i=0;
-	char temp[1000000000];
-	temp=*s;
 	while (s[i] != '\0'){
-		 temp[i] = s[first_char + i +1];
+		 s[i] = s[l + i];
 		 i++;
 	}
-	temp[i] = '\0';
-	s = temp;
+	s[i] = '\0';
 }
 
 
 int main(void) {
-  char test1[] = "Hello World   ";
+  char test1[] = "       Hello World   ";
 
   printf("Original string reads  : |%s|\n", test1);
   rstrip(test1);
