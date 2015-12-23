@@ -32,53 +32,95 @@ def get_A(n):
     return A
 
 
-def get_b(n, x=0.5, y=0.5, rho=2.0):
+def get_b(n, rho=2.0):
     """Return column vector of size n^2 containing the boundary conditions."""
     b = np.zeros(n**2)
-    b[n] = rho
-    b[n+1] = rho
+    b[(n+1)*int(n/2.0)] = rho
     return b
 
 
-def embed(T, Te=100):
+def embed(A, boundary=0.0):
     """Embed the array T giving the temperature at the inner nodes in
     the domain into a larger array including the boundary temperatures
     """
-    N = T.shape[0] + 2
-    Tfull = np.zeros((N,N))
-    Tfull[0] = Te
-    Tfull[1:-1, 1:-1] = T
-    return Tfull
+    N = A.shape[0] + 2
+    Afull = np.zeros((N,N))
+    Afull[0] = boundary
+    Afull[-1] = boundary
+    Afull[:, 0] = boundary
+    Afull[:, -1] = boundary
+    Afull[1:-1, 1:-1] = A
+    return Afull
 
 
-def laplace2d(get_A, get_b, N=50, Te=100):
+def laplace2d(get_A, get_b, solve=sp.linalg.solve, N=100, rho=2.0):
     """Solve the Laplace equation on a 2D grid, with T=0 at all
     boundaries except y=0, where T=Te, and return an 2D array of size
     NxN giving the temperature distribution throughout the domain.
     """
     n = N - 2
     A = get_A(n)
-    b = get_b(n, Te)
-    U = sp.linalg.solve(A, b)
-    T = U.reshape((n, n))
-    Tfull = embed(T, Te)
-    return Tfull
+    b = get_b(n, rho)
+    U = solve(A, b)
+    u = U.reshape((n, n))
+    ufull = embed(u)
+    return ufull
 
-def plot_pcolor(Tfull):
+def plot_pcolor(Afull):
     """Plot temperature in the domain using pcolor"""
-    N = Tfull.shape[0]
+    N = Afull.shape[0]
     x = y = np.linspace(0, 1, N)
     X, Y = np.meshgrid(x,y)
-    plt.pcolor(X, Y, Tfull)
+    plt.pcolor(X, Y, Afull)
     plt.axis('scaled')
     plt.colorbar()
     plt.xlabel('x (m)')
     plt.ylabel('y (m)')
-    plt.title('T(x,y) on %dx%d grid' % (N,N))
+    plt.title('u(x,y) on %dx%d grid' % (N,N))
 
-Tfull = laplace2d(get_A, get_b)
+
+def sor(A, b, x=None, omega=1.0, rel_err=1e-10):
+    if x == None:
+        x = np.zeros_like(b)
+    xprev = x.copy()
+    d = np.diag(A)
+    D = A - np.diagflat(d)
+    while np.all(np.abs(x-xprev) > rel_err):
+        for i in np.arange(len(x)):
+            x[i] = omega/d[i] * (b[i] - np.dot(D[i], x)) + (1.0-omega)*x[i]
+    return x
+
+
+def df2(A, i, j, n=50, a=0.0, b=1.0):
+    h = (b-a)/float(n)
+    diff = (A[i-1, j] + A[i+1, j] - 4*A[i, j] + A[i, j-1] + A[i, j+1])
+    return diff
+
+def ex1(n=50):
+    u = laplace2d(get_A, get_b, N=n, rho=2.0)
+    i = len(u)
+    diff = df2(u, int(i/2), int(i/2), n=n)
+    if abs(diff - 2.0)<1e-15:
+        print("Success! The condition $/del^2 u(0.5, 0.5) = 2.0$ is satisfied")
+    else:
+        print("Something went wrong del_u(0.5, 0.5)!=2.0\n")
+        print(diff)
+
+def ex2(n=20):
+    u = laplace2d(get_A, get_b, solve=sor, N=100, rho=2.0)
+    i = len(u)
+    diff = df2(u, int(i/2), int(i/2), n=n)
+    if abs(diff - 2.0)<1e-15:
+        print("Success! The condition $/del^2 u(0.5, 0.5) = 2.0$ is satisfied")
+    else:
+        print("Something went wrong del_u(0.5, 0.5) = %d2.1 instead of 2.0\n".format(diff))
+        print(diff)
+
+ex2()
+"""
+ufull = laplace2d(get_A, get_b)
 plt.figure(1)
 plt.clf()
-plot_pcolor(Tfull)
-plt.savefig('fig06-01.pdf')
+plot_pcolor(ufull)
+plt.savefig('fig06-01.pdf')"""
 
