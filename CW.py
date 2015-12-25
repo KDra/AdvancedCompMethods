@@ -53,7 +53,7 @@ def embed(A, boundary=0.0):
     return Afull
 
 
-def laplace2d(get_A, get_b, solve=sp.linalg.solve, N=100, rho=2.0):
+def laplace2d(get_A, get_b, solve=sp.linalg.solve, N=20, rho=2.0):
     """Solve the Laplace equation on a 2D grid, with T=0 at all
     boundaries except y=0, where T=Te, and return an 2D array of size
     NxN giving the temperature distribution throughout the domain.
@@ -79,13 +79,13 @@ def plot_pcolor(Afull):
     plt.title('u(x,y) on %dx%d grid' % (N,N))
 
 
-def sor(A, b, x=None, omega=1.0, rel_err=1e-10):
+def sor(A, b, x=None, omega=1.0, err=1e-10):
     if x == None:
-        x = np.zeros_like(b)
-    xprev = x.copy()
+        x = np.ones_like(b)
+    xprev = np.zeros_like(x)
     d = np.diag(A)
     D = A - np.diagflat(d)
-    while np.all(np.abs(x-xprev) > rel_err):
+    while np.any(np.abs(np.dot(A,x) - b) > err):
         for i in np.arange(len(x)):
             x[i] = omega/d[i] * (b[i] - np.dot(D[i], x)) + (1.0-omega)*x[i]
     return x
@@ -113,10 +113,13 @@ def ex2(n=20):
     if abs(diff - 2.0)<1e-15:
         print("Success! The condition $/del^2 u(0.5, 0.5) = 2.0$ is satisfied")
     else:
-        print("Something went wrong del_u(0.5, 0.5) = %d2.1 instead of 2.0\n".format(diff))
+        print("Something went wrong del_u(0.5, 0.5) = %d2.1 instead of 2.0\n", diff)
         print(diff)
 
-ex2()
+#ex2()
+u1=laplace2d(get_A, get_b, solve=sor)
+
+u2=laplace2d(get_A, get_b)
 """
 ufull = laplace2d(get_A, get_b)
 plt.figure(1)
