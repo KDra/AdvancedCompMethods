@@ -58,7 +58,7 @@ def laplace2d(get_A, get_b, solve=sp.linalg.solve, N=20, rho=2.0):
     boundaries except y=0, where T=Te, and return an 2D array of size
     NxN giving the temperature distribution throughout the domain.
     """
-    n = N - 2
+    n = N-2
     A = get_A(n)
     b = get_b(n, rho)
     U = solve(A, b)
@@ -85,7 +85,8 @@ def sor(A, b, x=None, omega=1.0, err=1e-10):
     xprev = np.zeros_like(x)
     d = np.diag(A)
     D = A - np.diagflat(d)
-    while np.any(np.abs(np.dot(A,x) - b) > err):
+    while np.any(np.abs(xprev - x) > err):
+        xprev=x.copy()
         for i in np.arange(len(x)):
             x[i] = omega/d[i] * (b[i] - np.dot(D[i], x)) + (1.0-omega)*x[i]
     return x
@@ -96,30 +97,72 @@ def df2(A, i, j, n=50, a=0.0, b=1.0):
     diff = (A[i-1, j] + A[i+1, j] - 4*A[i, j] + A[i, j-1] + A[i, j+1])
     return diff
 
-def ex1(n=50):
+def df2_3pt(A, i, j, n=50, a=0.0, b=1.0):
+    h = (b-a)/float(n)
+    diff = (-A[i-2, j] - A[i+2, j] + 16*A[i-1, j] + 16*A[i+1, j] - 60*A[i, j]
+            + 16*A[i, j-1] + 16*A[i, j+1] - A[i, j-2] - A[i, j+2])
+    return diff/12
+
+
+def get_A2(n):
+    """Return matrix A for 2D Laplace equation using block diagonal
+    structure, given the number of unknowns 'n' in each direction.
+    """
+    Bdiag = -60 * np.eye(n)
+    Bupper = 16.0*np.diag([1.0] * (n - 1), 1)
+    Bupper2 = -np.diag([1.0] * (n - 2), 2)
+    Blower = 16.0*np.diag([1.0] * (n - 1), -1)
+    Blower2 = -np.diag([1.0] * (n - 2), -2)
+    B = Bdiag + Bupper + Blower + Bupper2 + Blower2
+    # Creat a list [B,B,B,...,B] with n Bs
+    blst = [B] * n
+    # Unpack the list of diagonal blocks 'blst'
+    # since block_diag expects each block to be passed as separate
+    # arguments. This is the same as doing block_diag(B,B,B,...,B)
+    A = sp.linalg.block_diag(*blst)
+    # Upper diagonal array offset by n: we've got (n-1) I blocks
+    # each containing n ones
+    Dupper = 16*np.diag(np.ones(n * (n - 1)), n)
+    Dupper2 = -np.diag(np.ones(n * (n - 2)), 2*n)
+    # Lower diagonal array offset by -n
+    Dlower = 16*np.diag(np.ones(n * (n - 1)), -n)
+    Dlower2 = -np.diag(np.ones(n * (n - 2)), -2*n)
+    A += Dupper + Dlower + Dupper2 + Dlower2
+    return A/12
+
+def ex1(n=20):
     u = laplace2d(get_A, get_b, N=n, rho=2.0)
     i = len(u)
     diff = df2(u, int(i/2), int(i/2), n=n)
-    if abs(diff - 2.0)<1e-15:
+    if abs(diff - 2.0)<1e-6:
         print("Success! The condition $/del^2 u(0.5, 0.5) = 2.0$ is satisfied")
     else:
         print("Something went wrong del_u(0.5, 0.5)!=2.0\n")
         print(diff)
 
 def ex2(n=20):
-    u = laplace2d(get_A, get_b, solve=sor, N=100, rho=2.0)
+    u = laplace2d(get_A, get_b, solve=sor, N=n, rho=2.0)
     i = len(u)
     diff = df2(u, int(i/2), int(i/2), n=n)
-    if abs(diff - 2.0)<1e-15:
+    if abs(diff - 2.0)<1e-6:
         print("Success! The condition $/del^2 u(0.5, 0.5) = 2.0$ is satisfied")
     else:
-        print("Something went wrong del_u(0.5, 0.5) = %d2.1 instead of 2.0\n", diff)
-        print(diff)
+        print("Something went wrong del_u(0.5, 0.5) = {} instead of 2.0\n".format(diff))
 
-#ex2()
-u1=laplace2d(get_A, get_b, solve=sor)
 
-u2=laplace2d(get_A, get_b)
+def ex3(n=20):
+    u = laplace2d(get_A2, get_b, N=n, rho=2.0)
+    i = len(u)
+    diff = df2_3pt(u, int(i/2), int(i/2), n=n)
+    if abs(diff - 2.0)<1e-6:
+        print("Success! The condition $/del^2 u(0.5, 0.5) = 2.0$ is satisfied")
+    else:
+        print("Something went wrong del_u(0.5, 0.5) = {} instead of 2.0\n".format(diff))
+
+ex3(25)
+u1=laplace2d(get_A, get_b)
+
+u2=laplace2d(get_A2, get_b)
 """
 ufull = laplace2d(get_A, get_b)
 plt.figure(1)
