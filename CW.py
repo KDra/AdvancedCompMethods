@@ -97,7 +97,7 @@ def df2(A, i, j, n=50, a=0.0, b=1.0):
     diff = (A[i-1, j] + A[i+1, j] - 4*A[i, j] + A[i, j-1] + A[i, j+1])
     return diff
 
-def df2_3pt(A, i, j, n=50, a=0.0, b=1.0):
+def df2_9pt(A, i, j, n=50, a=0.0, b=1.0):
     h = (b-a)/float(n)
     diff = (-A[i-2, j] - A[i+2, j] + 16*A[i-1, j] + 16*A[i+1, j] - 60*A[i, j]
             + 16*A[i, j-1] + 16*A[i, j+1] - A[i, j-2] - A[i, j+2])
@@ -130,43 +130,74 @@ def get_A2(n):
     A += Dupper + Dlower + Dupper2 + Dlower2
     return A/12
 
+
+def gs_rb(A, b, x=None, err=1e-10):
+    if x == None:
+        x = np.ones_like(b)
+    xprev = np.zeros_like(x)
+    d = np.diag(A)
+    D = A - np.diagflat(d)
+    
+    r1=np.arange(0, len(b), 2)
+    r2=np.arange(1, len(b), 2)
+    def mLoop(x, b, d, D, r):
+        for i in r:
+            x[i] = 1/d[i] * (b[i] - np.dot(D[i], x))
+        return x
+    while np.any(np.abs(xprev - x) > err):
+        xprev=x.copy()
+        # Solve for red
+        x = mLoop(x, b, d, D, r1)
+        # Solve for black
+        x = mLoop(x, b, d, D, r2)
+    return x
+
+
+
 def ex1(n=20):
+    print("\nRunning exercise 1: Extended 2D Laplace solver")
     u = laplace2d(get_A, get_b, N=n, rho=2.0)
     i = len(u)
     diff = df2(u, int(i/2), int(i/2), n=n)
     if abs(diff - 2.0)<1e-6:
-        print("Success! The condition $/del^2 u(0.5, 0.5) = 2.0$ is satisfied")
+        print("Success! The condition del^2 u(0.5, 0.5) = 2.0$ is satisfied")
     else:
-        print("Something went wrong del_u(0.5, 0.5)!=2.0\n")
+        print("Something went wrong del u(0.5, 0.5)!=2.0\n")
         print(diff)
 
 def ex2(n=20):
+    print("\nRunning exercise 2: Extended 2D Laplace solver with Successive Over Relaxation")
     u = laplace2d(get_A, get_b, solve=sor, N=n, rho=2.0)
     i = len(u)
     diff = df2(u, int(i/2), int(i/2), n=n)
     if abs(diff - 2.0)<1e-6:
-        print("Success! The condition $/del^2 u(0.5, 0.5) = 2.0$ is satisfied")
+        print("Success! The condition del^2 u(0.5, 0.5) = 2.0$ is satisfied")
     else:
-        print("Something went wrong del_u(0.5, 0.5) = {} instead of 2.0\n".format(diff))
+        print("Something went wrong del u(0.5, 0.5) = {} instead of 2.0\n".format(diff))
 
 
 def ex3(n=20):
+    print("\nRunning exercise 3: Extended 2D Laplace solver with a 9 point finite difference stencil")
     u = laplace2d(get_A2, get_b, N=n, rho=2.0)
     i = len(u)
-    diff = df2_3pt(u, int(i/2), int(i/2), n=n)
+    diff = df2_9pt(u, int(i/2), int(i/2), n=n)
     if abs(diff - 2.0)<1e-6:
-        print("Success! The condition $/del^2 u(0.5, 0.5) = 2.0$ is satisfied")
+        print("Success! The condition del^2 u(0.5, 0.5) = 2.0$ is satisfied")
     else:
-        print("Something went wrong del_u(0.5, 0.5) = {} instead of 2.0\n".format(diff))
+        print("Something went wrong del u(0.5, 0.5) = {} instead of 2.0\n".format(diff))
 
-ex3(25)
-u1=laplace2d(get_A, get_b)
 
-u2=laplace2d(get_A2, get_b)
-"""
-ufull = laplace2d(get_A, get_b)
-plt.figure(1)
-plt.clf()
-plot_pcolor(ufull)
-plt.savefig('fig06-01.pdf')"""
+def ex4(n=20):
+    print("\nRunning exercise 4: Verify the solutions using the Gauss-Seidel red-black solver")
+    u = laplace2d(get_A2, get_b, solve=gs_rb, N=n, rho=2.0)
+    i = len(u)
+    diff = df2_9pt(u, int(i/2), int(i/2), n=n)
+    if abs(diff - 2.0)<1e-6:
+        print("Success! The condition del^2 u(0.5, 0.5) = 2.0$ is satisfied")
+    else:
+        print("Something went wrong del u(0.5, 0.5) = {} instead of 2.0\n".format(diff))
 
+ex1()
+ex2()
+ex3()
+ex4()
